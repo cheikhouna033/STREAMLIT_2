@@ -1,69 +1,66 @@
 import streamlit as st
 import pandas as pd
-import pickle
+import joblib
+import requests
+import io
 
-# Configuration de la page
+MODEL_URL = "https://github.com/cheikhouna033/INCLUSION_FINANCIERE_EN_AFRIQUE/releases/download/stream/model.pkl"
 
-st.set_page_config(page_title="Prédiction Inclusion Financière", layout="wide")
-st.title("📊 Prédiction : Inclusion Financière en Afrique")
+@st.cache_resource
+def load_model():
+    try:
+        response = requests.get(MODEL_URL)
+        response.raise_for_status()
+        buffer = io.BytesIO(response.content)
+        model = joblib.load(buffer)
+        return model
+    except Exception as e:
+        st.error(f"Erreur lors du chargement du modèle : {e}")
+        return None
 
-# 1️⃣ Charger le modèle
+model = load_model()
 
-try:
-with open("model.pkl", "rb") as f:
-pkg = pickle.load(f)
-model = pkg["model"]
-le_dict = pkg["label_encoders"]
-columns = pkg["columns"]
-st.success("✅ Modèle chargé avec succès !")
-except Exception as e:
-st.error(f"❌ Erreur lors du chargement du modèle : {e}")
-st.stop()
+st.title("Prédiction - Inclusion Financière en Afrique")
 
-# 2️⃣ Créer un formulaire pour les entrées utilisateur
+st.write("Remplissez les champs pour prédire la possession d’un compte bancaire.")
 
-st.subheader("Entrez les informations du répondant :")
-form = st.form("user_input_form")
+country = st.selectbox("Country", ["Kenya","Uganda","Tanzania","Rwanda","Burundi"])
+year = st.number_input("Year", 2000, 2030, 2016)
+location_type = st.selectbox("Location", ["Rural","Urban"])
+cellphone_access = st.selectbox("Cellphone access", ["No","Yes"])
+household_size = st.number_input("Household size", 1, 50, 4)
+age_of_respondent = st.number_input("Age", 10, 120, 30)
+gender_of_respondent = st.selectbox("Gender", ["Male","Female"])
+relationship_with_head = st.selectbox("Relationship with Head", ["Head of Household","Spouse","Child","Other"])
+marital_status = st.selectbox("Marital Status", ["Married","Single","Divorced","Widowed"])
+education_level = st.selectbox("Education level", [
+    "No formal education","Primary education","Secondary education","Tertiary education"
+])
+job_type = st.selectbox("Job type", [
+    "Self employed","Formally employed Government","Farming and Fishing",
+    "Informally employed","Remittance Dependent"
+])
 
-# Créer des champs pour chaque colonne (sauf la cible)
+input_df = pd.DataFrame([{
+    "country": country,
+    "year": year,
+    "location_type": location_type,
+    "cellphone_access": cellphone_access,
+    "household_size": household_size,
+    "age_of_respondent": age_of_respondent,
+    "gender_of_respondent": gender_of_respondent,
+    "relationship_with_head": relationship_with_head,
+    "marital_status": marital_status,
+    "education_level": education_level,
+    "job_type": job_type
+}])
 
-user_data = {}
-for col in columns:
-if col in le_dict:
-# Colonne catégorielle : selectbox avec les classes connues
-le = le_dict[col]
-options = list(le.classes_)
-user_data[col] = form.selectbox(col, options)
-else:
-# Colonne numérique : number_input
-user_data[col] = form.number_input(col, value=0)
-
-# Bouton de soumission
-
-submit = form.form_submit_button("Prédire")
-
-# 3️⃣ Faire la prédiction
-
-if submit:
-# Créer un DataFrame pour la prédiction
-input_df = pd.DataFrame([user_data])
-
-```
-# Encoder les colonnes catégorielles avec les mêmes LabelEncoder
-for col, le in le_dict.items():
-    input_df[col] = le.transform(input_df[col])
-
-# Réordonner les colonnes comme à l'entraînement
-input_df = input_df[columns]
-
-# Prédiction
-prediction = model.predict(input_df)[0]
-
-# Affichage du résultat
-st.subheader("Résultat :")
-if "bank_account" in le_dict:
-    pred_label = le_dict["bank_account"].inverse_transform([prediction])[0]
-    st.write(f"💡 Inclusion financière : **{pred_label}**")
-else:
-    st.write(f"💡 Inclusion financière : **{prediction}**")
-```
+if st.button("Prédire"):
+    if model is None:
+        st.error("Modèle non chargé.")
+    else:
+        pred = model.predict(input_df)[0]
+        if pred == 1:
+            st.success("✔ Oui, cette personne est susceptible d'avoir un compte bancaire")
+        else:
+            st.warning("✖ Non, cette personne est peu susceptible d'avoir un compte bancaire")

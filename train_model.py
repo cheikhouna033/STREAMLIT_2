@@ -1,61 +1,49 @@
+import streamlit as st
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
-import pickle
+import joblib
 
-# 1️⃣ Charger les données
+MODEL_PATH = "model.pkl"  # Le modèle doit être dans le même dossier que app.py
 
-df = pd.read_csv("Financial_inclusion_dataset.csv")
-print("Colonnes du dataset :")
-print(df.columns.tolist())
+@st.cache_resource
+def load_model():
+    return joblib.load(MODEL_PATH)
 
-# 2️⃣ Vérifier que la colonne cible existe
+model = load_model()
 
-target_col = "bank_account"
-if target_col not in df.columns:
-raise ValueError(f"❌ La colonne '{target_col}' est absente du dataset.")
+st.title("Prédiction - Possession d'un compte bancaire")
+st.write("Remplis les champs ci-dessous puis clique sur **Prédire**.")
 
-# 3️⃣ Gestion des valeurs manquantes
+country = st.selectbox("Country", ["Kenya","Uganda","Tanzania","Rwanda","Burundi"])
+year = st.number_input("Year", 2000, 2030, 2018)
+location_type = st.selectbox("Location type", ["Rural","Urban"])
+cellphone_access = st.selectbox("Cellphone access", ["No","Yes"])
+household_size = st.number_input("Household size", 1, 50, 4)
+age = st.number_input("Age of respondent", 10, 120, 30)
+gender = st.selectbox("Gender", ["Male","Female"])
+relationship = st.selectbox("Relationship with head", ["Head of Household","Spouse","Child","Other"])
+marital = st.selectbox("Marital status", ["Married","Single","Divorced","Widowed"])
+education = st.selectbox("Education level", [
+    "No formal education","Primary education","Secondary education","Tertiary education"
+])
+job = st.selectbox("Job type", [
+    "Self employed","Formally employed Government","Farming and Fishing",
+    "Informally employed","Remittance Dependent"
+])
 
-if df.isnull().sum().sum() > 0:
-print("⚠️ Valeurs manquantes détectées, remplissage par la valeur la plus fréquente pour chaque colonne.")
-for col in df.columns:
-df[col].fillna(df[col].mode()[0], inplace=True)
+input_df = pd.DataFrame([{
+    "country": country,
+    "year": year,
+    "location_type": location_type,
+    "cellphone_access": cellphone_access,
+    "household_size": household_size,
+    "age_of_respondent": age,
+    "gender_of_respondent": gender,
+    "relationship_with_head": relationship,
+    "marital_status": marital,
+    "education_level": education,
+    "job_type": job
+}])
 
-# 4️⃣ Encoder les colonnes catégorielles
-
-le_dict = {}
-for col in df.select_dtypes(include="object").columns:
-le = LabelEncoder()
-df[col] = le.fit_transform(df[col])
-le_dict[col] = le
-
-# 5️⃣ Séparation X / y
-
-X = df.drop(target_col, axis=1)
-y = df[target_col]
-
-# 6️⃣ Train/test split
-
-X_train, X_test, y_train, y_test = train_test_split(
-X, y, test_size=0.2, random_state=42, stratify=y
-)
-
-# 7️⃣ Création et entraînement du modèle
-
-model = RandomForestClassifier(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
-
-# 8️⃣ Sauvegarde du modèle et des encoders
-
-pkg = {
-"model": model,
-"columns": X.columns.tolist(),
-"label_encoders": le_dict
-}
-
-with open("model.pkl", "wb") as f:
-pickle.dump(pkg, f)
-
-print("✅ Modèle entraîné et sauvegardé avec succès !")
+if st.button("Prédire"):
+    pred = model.predict(input_df)[0]
+    st.success("Prediction: **Yes**" if pred==1 else "Prediction: **No**")
