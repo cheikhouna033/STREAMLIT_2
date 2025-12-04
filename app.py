@@ -6,7 +6,7 @@ import requests
 # ----------------------------------------------------
 # 🔹 URL du modèle hébergé dans tes GitHub Releases
 # ----------------------------------------------------
-MODEL_URL = "https://github.com/cheikhouna033/INCLUSION_FINANCIERE_EN_AFRIQUE/releases/download/Streamlit/model.pkl"
+MODEL_URL = "https://github.com/cheikhouna033/STREAMLIT_2/releases/download/STR/model.pkl"
 
 
 # ----------------------------------------------------
