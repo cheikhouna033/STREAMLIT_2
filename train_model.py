@@ -1,49 +1,51 @@
-import streamlit as st
 import pandas as pd
-import joblib
+import pickle
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 
-MODEL_PATH = "model.pkl"  # Le modèle doit être dans le même dossier que app.py
+# -------------------------------
+# 🔹 1) Charger le dataset
+# -------------------------------
+df = pd.read_csv("Financial_inclusion_dataset.csv")
 
-@st.cache_resource
-def load_model():
-    return joblib.load(MODEL_PATH)
+# ⚠️ Si ta colonne cible a un autre nom, dis-le moi !
+TARGET = "bank_account"
 
-model = load_model()
+# On supprime les lignes vides
+df = df.dropna()
 
-st.title("Prédiction - Possession d'un compte bancaire")
-st.write("Remplis les champs ci-dessous puis clique sur **Prédire**.")
+# -------------------------------
+# 🔹 2) Séparation X / y
+# -------------------------------
+X = df.drop(TARGET, axis=1)
+y = df[TARGET]
 
-country = st.selectbox("Country", ["Kenya","Uganda","Tanzania","Rwanda","Burundi"])
-year = st.number_input("Year", 2000, 2030, 2018)
-location_type = st.selectbox("Location type", ["Rural","Urban"])
-cellphone_access = st.selectbox("Cellphone access", ["No","Yes"])
-household_size = st.number_input("Household size", 1, 50, 4)
-age = st.number_input("Age of respondent", 10, 120, 30)
-gender = st.selectbox("Gender", ["Male","Female"])
-relationship = st.selectbox("Relationship with head", ["Head of Household","Spouse","Child","Other"])
-marital = st.selectbox("Marital status", ["Married","Single","Divorced","Widowed"])
-education = st.selectbox("Education level", [
-    "No formal education","Primary education","Secondary education","Tertiary education"
-])
-job = st.selectbox("Job type", [
-    "Self employed","Formally employed Government","Farming and Fishing",
-    "Informally employed","Remittance Dependent"
-])
+# -------------------------------
+# 🔹 3) Train / Test split
+# -------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
-input_df = pd.DataFrame([{
-    "country": country,
-    "year": year,
-    "location_type": location_type,
-    "cellphone_access": cellphone_access,
-    "household_size": household_size,
-    "age_of_respondent": age,
-    "gender_of_respondent": gender,
-    "relationship_with_head": relationship,
-    "marital_status": marital,
-    "education_level": education,
-    "job_type": job
-}])
+# -------------------------------
+# 🔹 4) Modèle
+# -------------------------------
+model = RandomForestClassifier(
+    n_estimators=300,
+    max_depth=20,
+    random_state=42
+)
+model.fit(X_train, y_train)
 
-if st.button("Prédire"):
-    pred = model.predict(input_df)[0]
-    st.success("Prediction: **Yes**" if pred==1 else "Prediction: **No**")
+# -------------------------------
+# 🔹 5) Sauvegarde du modèle en pickle
+# -------------------------------
+package = {
+    "model": model,
+    "columns": list(X.columns)
+}
+
+with open("model.pkl", "wb") as f:
+    pickle.dump(package, f)
+
+print("🎉 Modèle enregistré sous model.pkl !")
