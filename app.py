@@ -12,12 +12,13 @@ MODEL_URL = "https://github.com/cheikhouna033/STREAMLIT_2/releases/download/STR/
 # ----------------------------------------------------
 # 🔹 Fonction de téléchargement + chargement modèle
 # ----------------------------------------------------
-@st.cache_resource
+st.cache_resource
 def load_model():
     try:
         st.info("Téléchargement du modèle...")
 
-        response = requests.get(MODEL_URL)
+        headers = {"Accept": "application/octet-stream"}
+        response = requests.get(MODEL_URL, headers=headers)
         response.raise_for_status()
 
         model_pkg = pickle.loads(response.content)
